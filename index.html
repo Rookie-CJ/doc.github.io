@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>档案管理系统</title>
+    <title>档案管理系统 - 团队版</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -192,6 +192,17 @@
             box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
         }
         
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.3);
+        }
+        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -294,6 +305,36 @@
             border: 1px solid #f5c6cb;
         }
         
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .data-sync-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 25px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .sync-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .user-indicator {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #e8f4fd;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #3498db;
+            margin-left: 10px;
+        }
+        
         footer {
             text-align: center;
             padding: 20px;
@@ -315,14 +356,18 @@
             .search-box {
                 flex-direction: column;
             }
+            
+            .sync-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-archive"></i> 档案管理系统</h1>
-            <p>高效管理档案登记、查询与借阅</p>
+            <h1><i class="fas fa-archive"></i> 档案管理系统 - 团队版</h1>
+            <p>高效管理档案登记、查询与借阅 | 支持团队数据共享</p>
         </header>
         
         <div class="main-content">
@@ -341,6 +386,9 @@
                 </div>
                 <div class="nav-item" data-target="return">
                     <i class="fas fa-undo"></i> 档案归还
+                </div>
+                <div class="nav-item" data-target="sync">
+                    <i class="fas fa-sync-alt"></i> 数据同步
                 </div>
             </div>
             
@@ -478,11 +526,64 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- 数据同步 -->
+                <div class="section" id="sync">
+                    <h2 class="section-title"><i class="fas fa-sync-alt"></i> 数据同步</h2>
+                    
+                    <div class="card">
+                        <h3>团队数据共享</h3>
+                        <p>通过数据导入导出功能，团队成员可以共享档案数据。</p>
+                        
+                        <div class="data-sync-section">
+                            <h4>数据导出</h4>
+                            <p>将当前所有档案数据导出为JSON文件，可以分享给其他团队成员。</p>
+                            <div class="sync-buttons">
+                                <button class="btn btn-primary" id="exportData">
+                                    <i class="fas fa-download"></i> 导出数据
+                                </button>
+                                <button class="btn btn-warning" id="exportBorrowData">
+                                    <i class="fas fa-download"></i> 导出借阅记录
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="data-sync-section">
+                            <h4>数据导入</h4>
+                            <p>导入其他团队成员分享的数据文件，合并到当前系统中。</p>
+                            <div class="sync-buttons">
+                                <input type="file" id="importFile" accept=".json" style="display: none;">
+                                <button class="btn btn-success" id="importData">
+                                    <i class="fas fa-upload"></i> 导入数据
+                                </button>
+                                <select id="importMode" style="padding: 12px 15px; border-radius: 6px; border: 1px solid #ddd;">
+                                    <option value="merge">合并数据</option>
+                                    <option value="replace">替换数据</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="data-sync-section">
+                            <h4>数据备份与恢复</h4>
+                            <p>定期备份数据，防止意外丢失。</p>
+                            <div class="sync-buttons">
+                                <button class="btn btn-primary" id="backupData">
+                                    <i class="fas fa-save"></i> 备份数据
+                                </button>
+                                <button class="btn btn-warning" id="restoreData">
+                                    <i class="fas fa-history"></i> 恢复数据
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="syncResult" style="margin-top: 20px;"></div>
+                    </div>
+                </div>
             </div>
         </div>
         
         <footer>
-            <p>档案管理系统 &copy; 2025 - 基于浏览器本地存储技术</p>
+            <p>档案管理系统 - 团队版 &copy; 2025 - 基于浏览器本地存储技术，支持数据共享</p>
         </footer>
     </div>
 
@@ -490,6 +591,7 @@
         // 数据存储键名
         const ARCHIVES_KEY = 'archives';
         const BORROW_RECORDS_KEY = 'borrowRecords';
+        const BACKUP_KEY = 'archive_backup';
         
         // 初始化应用
         document.addEventListener('DOMContentLoaded', function() {
@@ -503,8 +605,19 @@
             document.getElementById('searchBtn').addEventListener('click', handleSearch);
             document.getElementById('borrowSearchBtn').addEventListener('click', handleBorrowSearch);
             
+            // 初始化数据同步功能
+            document.getElementById('exportData').addEventListener('click', exportData);
+            document.getElementById('exportBorrowData').addEventListener('click', exportBorrowData);
+            document.getElementById('importData').addEventListener('click', triggerImport);
+            document.getElementById('importFile').addEventListener('change', importData);
+            document.getElementById('backupData').addEventListener('click', backupData);
+            document.getElementById('restoreData').addEventListener('click', restoreData);
+            
             // 更新系统概览
             updateDashboard();
+            
+            // 显示当前用户标识
+            showUserIndicator();
         });
         
         // 初始化导航
@@ -545,7 +658,8 @@
                 date: document.getElementById('archiveDate').value || new Date().toISOString().split('T')[0],
                 description: document.getElementById('archiveDescription').value,
                 status: 'available',
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                createdBy: getUserIdentifier()
             };
             
             // 保存档案
@@ -611,6 +725,7 @@
                             <th>档案类型</th>
                             <th>所属部门</th>
                             <th>状态</th>
+                            <th>登记人</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -625,6 +740,7 @@
                         <td>${archive.type}</td>
                         <td>${archive.department}</td>
                         <td><span class="status-badge ${archive.status === 'available' ? 'status-available' : 'status-borrowed'}">${archive.status === 'available' ? '可借阅' : '已借出'}</span></td>
+                        <td>${archive.createdBy || '未知'}</td>
                         <td>
                             <button class="btn btn-primary" onclick="viewArchiveDetails('${archive.id}')">
                                 <i class="fas fa-eye"></i> 查看
@@ -672,6 +788,7 @@
                             <th>档案编号</th>
                             <th>档案名称</th>
                             <th>档案类型</th>
+                            <th>登记人</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -684,6 +801,7 @@
                         <td>${archive.code}</td>
                         <td>${archive.name}</td>
                         <td>${archive.type}</td>
+                        <td>${archive.createdBy || '未知'}</td>
                         <td>
                             <button class="btn btn-success" onclick="borrowArchive('${archive.id}')">
                                 <i class="fas fa-hand-holding"></i> 借阅
@@ -713,7 +831,8 @@
                 borrower: borrower,
                 borrowDate: borrowDate,
                 expectedReturnDate: returnDate,
-                actualReturnDate: null
+                actualReturnDate: null,
+                borrowedBy: getUserIdentifier()
             };
             
             // 保存借阅记录
@@ -764,6 +883,7 @@
                             <th>借阅人</th>
                             <th>借阅日期</th>
                             <th>预计归还</th>
+                            <th>借阅操作人</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -780,6 +900,7 @@
                             <td>${record.borrower}</td>
                             <td>${record.borrowDate}</td>
                             <td>${record.expectedReturnDate}</td>
+                            <td>${record.borrowedBy || '未知'}</td>
                             <td>
                                 <button class="btn btn-success" onclick="returnArchive('${record.id}')">
                                     <i class="fas fa-undo"></i> 归还
@@ -862,6 +983,7 @@
                             <th>档案名称</th>
                             <th>归档日期</th>
                             <th>状态</th>
+                            <th>登记人</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -874,6 +996,7 @@
                         <td>${archive.name}</td>
                         <td>${archive.date}</td>
                         <td><span class="status-badge ${archive.status === 'available' ? 'status-available' : 'status-borrowed'}">${archive.status === 'available' ? '可借阅' : '已借出'}</span></td>
+                        <td>${archive.createdBy || '未知'}</td>
                     </tr>
                 `;
             });
@@ -939,10 +1062,180 @@
                 details += `所属部门: ${archive.department}\n`;
                 details += `归档日期: ${archive.date}\n`;
                 details += `档案描述: ${archive.description}\n`;
+                details += `登记人: ${archive.createdBy || '未知'}\n`;
                 details += `当前状态: ${archive.status === 'available' ? '可借阅' : '已借出'}`;
                 
                 alert(details);
             }
+        }
+        
+        // 数据导出功能
+        function exportData() {
+            const archives = getArchives();
+            const data = {
+                archives: archives,
+                exportTime: new Date().toISOString(),
+                exportedBy: getUserIdentifier()
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "archive_data_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            
+            document.getElementById('syncResult').innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> 数据导出成功！</div>';
+        }
+        
+        // 导出借阅记录
+        function exportBorrowData() {
+            const borrowRecords = getBorrowRecords();
+            const data = {
+                borrowRecords: borrowRecords,
+                exportTime: new Date().toISOString(),
+                exportedBy: getUserIdentifier()
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "borrow_records_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            
+            document.getElementById('syncResult').innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> 借阅记录导出成功！</div>';
+        }
+        
+        // 触发导入
+        function triggerImport() {
+            document.getElementById('importFile').click();
+        }
+        
+        // 数据导入功能
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    const importMode = document.getElementById('importMode').value;
+                    
+                    if (importMode === 'replace') {
+                        // 替换模式：完全替换现有数据
+                        if (data.archives) {
+                            localStorage.setItem(ARCHIVES_KEY, JSON.stringify(data.archives));
+                        }
+                        if (data.borrowRecords) {
+                            localStorage.setItem(BORROW_RECORDS_KEY, JSON.stringify(data.borrowRecords));
+                        }
+                        
+                        document.getElementById('syncResult').innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> 数据替换成功！</div>';
+                    } else {
+                        // 合并模式：合并数据，避免重复
+                        let mergedCount = 0;
+                        
+                        if (data.archives) {
+                            const existingArchives = getArchives();
+                            const existingIds = existingArchives.map(a => a.id);
+                            
+                            data.archives.forEach(archive => {
+                                if (!existingIds.includes(archive.id)) {
+                                    existingArchives.push(archive);
+                                    mergedCount++;
+                                }
+                            });
+                            
+                            localStorage.setItem(ARCHIVES_KEY, JSON.stringify(existingArchives));
+                        }
+                        
+                        if (data.borrowRecords) {
+                            const existingRecords = getBorrowRecords();
+                            const existingRecordIds = existingRecords.map(r => r.id);
+                            
+                            data.borrowRecords.forEach(record => {
+                                if (!existingRecordIds.includes(record.id)) {
+                                    existingRecords.push(record);
+                                    mergedCount++;
+                                }
+                            });
+                            
+                            localStorage.setItem(BORROW_RECORDS_KEY, JSON.stringify(existingRecords));
+                        }
+                        
+                        document.getElementById('syncResult').innerHTML = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> 数据合并成功！新增了 ${mergedCount} 条记录。</div>`;
+                    }
+                    
+                    // 更新界面
+                    updateDashboard();
+                    // 重置文件输入
+                    event.target.value = '';
+                    
+                } catch (error) {
+                    document.getElementById('syncResult').innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> 导入失败：${error.message}</div>`;
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // 数据备份
+        function backupData() {
+            const archives = getArchives();
+            const borrowRecords = getBorrowRecords();
+            
+            const backup = {
+                archives: archives,
+                borrowRecords: borrowRecords,
+                backupTime: new Date().toISOString()
+            };
+            
+            localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
+            document.getElementById('syncResult').innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> 数据备份成功！</div>';
+        }
+        
+        // 数据恢复
+        function restoreData() {
+            const backupJSON = localStorage.getItem(BACKUP_KEY);
+            if (!backupJSON) {
+                document.getElementById('syncResult').innerHTML = '<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> 未找到备份数据！</div>';
+                return;
+            }
+            
+            if (confirm('确定要恢复备份数据吗？当前数据将被覆盖。')) {
+                const backup = JSON.parse(backupJSON);
+                
+                if (backup.archives) {
+                    localStorage.setItem(ARCHIVES_KEY, JSON.stringify(backup.archives));
+                }
+                
+                if (backup.borrowRecords) {
+                    localStorage.setItem(BORROW_RECORDS_KEY, JSON.stringify(backup.borrowRecords));
+                }
+                
+                document.getElementById('syncResult').innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> 数据恢复成功！</div>';
+                updateDashboard();
+            }
+        }
+        
+        // 获取用户标识
+        function getUserIdentifier() {
+            let user = localStorage.getItem('archive_user');
+            if (!user) {
+                user = prompt('请输入您的姓名（用于标识操作记录）：') || '用户' + Math.floor(Math.random() * 1000);
+                localStorage.setItem('archive_user', user);
+            }
+            return user;
+        }
+        
+        // 显示用户标识
+        function showUserIndicator() {
+            const user = getUserIdentifier();
+            const header = document.querySelector('header h1');
+            header.innerHTML += `<span class="user-indicator">当前用户: ${user}</span>`;
         }
         
         // 显示提示消息
